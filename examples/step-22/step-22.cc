@@ -461,7 +461,20 @@ namespace Step22
 
     std::vector<unsigned int> block_component(dim + 1, 0);
     block_component[dim] = 1;
-    DoFRenumbering::component_wise(dof_handler, block_component);
+
+    // [WIP] Either remove, or keep and modify the above commentary also.
+    // block_component is used thr
+    const FEValuesExtractors::Vector velocities(0);
+    const FEValuesExtractors::Scalar pressure(dim);
+
+    DoFRenumbering::component_wise(dof_handler, {velocities, pressure});
+
+    // @note Instead of manually constructing the <code>block_component</code>
+    // We can alternatively instantiate appropriate FEValuesExtractors and
+    // call DoFRenumbering::component_wise with a braced initializer list of
+    // extractors. For details, see DoFRenumbering::component_wise<dim,
+    // spacedim>(DoFHandler<dim, spacedim> &, const
+    // std::vector<ExtractorVariant> &).
 
     // Now comes the implementation of Dirichlet boundary conditions, which
     // should be evident after the discussion in the introduction. All that

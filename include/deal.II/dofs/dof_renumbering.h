@@ -23,6 +23,7 @@
 
 #include <deal.II/dofs/dof_handler.h>
 
+#include <variant>
 #include <vector>
 
 DEAL_II_NAMESPACE_OPEN
@@ -688,6 +689,76 @@ namespace DoFRenumbering
                  const unsigned int               level,
                  const std::vector<unsigned int> &target_component =
                    std::vector<unsigned int>());
+
+
+
+  /**
+   * Convenience alias for variant type of supported FEValuesExtractors structs
+   */
+  using ExtractorVariant = std::variant<FEValuesExtractors::Scalar,
+                                        FEValuesExtractors::Vector,
+                                        FEValuesExtractors::Tensor<2>,
+                                        FEValuesExtractors::SymmetricTensor<2>>;
+
+
+  /**
+   * Utility function used to fill a given `component_order` vector by
+   * processing an `order` of FEValuesExtractors. Supported extractors are
+   * listed in DoFRenumbering::ExtractorVariant. The function is used in the
+   * implementation of component_wise(DoFHandler<dim, spacedim>&, const
+   * std::vector<ExtractorVariant> &).
+   */
+  template <int dim, int spacedim>
+  void
+  populate_component_order(
+    const std::vector<ExtractorVariant> &order,
+    std::vector<unsigned int>           &component_order,
+    unsigned int unassigned_value = numbers::invalid_unsigned_int);
+
+  /**
+   * Sort the degrees of freedom by vector component. It does the same thing as
+   * above function except the ordering argument is a braced initializer list
+   * containing FEValuesExtractors.
+   *
+   * The following two snippets are equivalent:
+   * @code{.cpp}
+   * std::vector<unsigned int> block_component(dim + 1, 0);
+   * block_component[dim] = 1;
+   * DoFRenumbering::component_wise(dof_handler, block_component);
+   * @endcode
+   *
+   * @code{.cpp}
+   * const FEValuesExtractors::Vector velocities(0);
+   * const FEValuesExtractors::Scalar pressure(dim);
+   * DoFRenumbering::component_wise(dof_handler, {velocities, pressure});
+   * @endcode
+   *
+   * Calling the function with {velocities, pressure} is equivalent to calling
+   * the above function with std::vector<unsigned int>{0, 0, 1} for dim=2, while
+   * calling with {pressure, velocities} would result in a call to above
+   * function with std::vector<unsigned int>{1, 1, 0} as the target_component
+   * argument.
+   *
+   */
+  template <int dim, int spacedim>
+  void
+  component_wise(DoFHandler<dim, spacedim>           &dof_handler,
+                 const std::vector<ExtractorVariant> &order =
+                   std::vector<ExtractorVariant>());
+
+  /**
+   * Sort the degrees of freedom by component. It does the same thing as the
+   * above function, only that it does this for one single level of a
+   * multilevel discretization. The non-multigrid part of the DoFHandler
+   * is not touched.
+   */
+  template <int dim, int spacedim>
+  void
+  component_wise(DoFHandler<dim, spacedim>           &dof_handler,
+                 const unsigned int                   level,
+                 const std::vector<ExtractorVariant> &order =
+                   std::vector<ExtractorVariant>());
+
 
   /**
    * Compute the renumbering vector needed by the component_wise() functions.
