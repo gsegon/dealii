@@ -747,6 +747,104 @@ namespace DoFRenumbering
 
 
 
+  template <int dim, int spacedim>
+  void
+  component_wise(DoFHandler<dim, spacedim>            &dof_handler,
+                 const std::vector<ExtractorVariant> &extractor_order)
+  {
+    std::vector<unsigned int> component_order(
+      dof_handler.get_fe().n_components(), numbers::invalid_unsigned_int);
+
+    unsigned int block_index = 0;
+    for (const auto &component : extractor_order)
+      {
+        if (std::holds_alternative<FEValuesExtractors::Scalar>(component))
+          std::fill_n(
+            component_order.begin() +
+              std::get<FEValuesExtractors::Scalar>(component).component,
+            1,
+            block_index);
+
+        else if (std::holds_alternative<FEValuesExtractors::Vector>(component))
+          std::fill_n(component_order.begin() +
+                        std::get<FEValuesExtractors::Vector>(component)
+                          .first_vector_component,
+                      dim,
+                      block_index);
+
+        else if (std::holds_alternative<FEValuesExtractors::Tensor<0>>(
+                   component))
+          std::fill_n(component_order.begin() +
+                        std::get<FEValuesExtractors::Tensor<0>>(component)
+                          .first_tensor_component,
+                      Tensor<0, dim>::n_independent_components,
+                      block_index);
+
+        else if (std::holds_alternative<FEValuesExtractors::Tensor<1>>(
+                   component))
+          std::fill_n(component_order.begin() +
+                        std::get<FEValuesExtractors::Tensor<1>>(component)
+                          .first_tensor_component,
+                      Tensor<1, dim>::n_independent_components,
+                      block_index);
+
+        else if (std::holds_alternative<FEValuesExtractors::Tensor<2>>(
+                   component))
+          std::fill_n(component_order.begin() +
+                        std::get<FEValuesExtractors::Tensor<2>>(component)
+                          .first_tensor_component,
+                      Tensor<2, dim>::n_independent_components,
+                      block_index);
+
+        else if (std::holds_alternative<FEValuesExtractors::Tensor<3>>(
+                   component))
+          std::fill_n(component_order.begin() +
+                        std::get<FEValuesExtractors::Tensor<3>>(component)
+                          .first_tensor_component,
+                      Tensor<3, dim>::n_independent_components,
+                      block_index);
+
+        else if (std::holds_alternative<FEValuesExtractors::Tensor<4>>(
+                   component))
+          std::fill_n(component_order.begin() +
+                        std::get<FEValuesExtractors::Tensor<4>>(component)
+                          .first_tensor_component,
+                      Tensor<4, dim>::n_independent_components,
+                      block_index);
+
+        else if (std::holds_alternative<FEValuesExtractors::SymmetricTensor<2>>(
+                   component))
+          std::fill_n(component_order.begin() +
+                        std::get<FEValuesExtractors::SymmetricTensor<2>>(
+                          component)
+                          .first_tensor_component,
+                      SymmetricTensor<2, dim>::n_independent_components,
+                      block_index);
+
+        else if (std::holds_alternative<FEValuesExtractors::SymmetricTensor<4>>(
+                   component))
+          std::fill_n(component_order.begin() +
+                        std::get<FEValuesExtractors::SymmetricTensor<4>>(
+                          component)
+                          .first_tensor_component,
+                      SymmetricTensor<4, dim>::n_independent_components,
+                      block_index);
+
+        // Increment block index
+        block_index++;
+      }
+
+    // After processing all extractors, size of `component_order` must be equal
+    // to the number of finite element system components (or fe_collection)
+    Assert(component_order.size() == dof_handler.get_fe().n_components(),
+           ExcDimensionMismatch(component_order.size(),
+                                dof_handler.get_fe().n_components()));
+
+    component_wise(dof_handler, component_order);
+  }
+
+
+
   template <int dim, int spacedim, typename CellIterator>
   types::global_dof_index
   compute_component_wise(std::vector<types::global_dof_index> &new_indices,

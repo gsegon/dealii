@@ -23,6 +23,7 @@
 
 #include <deal.II/dofs/dof_handler.h>
 
+#include <variant>
 #include <vector>
 
 DEAL_II_NAMESPACE_OPEN
@@ -688,6 +689,51 @@ namespace DoFRenumbering
                  const unsigned int               level,
                  const std::vector<unsigned int> &target_component =
                    std::vector<unsigned int>());
+
+
+
+  /**
+   * Convenience alias for variant type of supported FEValuesExtractors structs
+   */
+  using ExtractorVariant =
+    std::variant<FEValuesExtractors::Scalar,
+                 FEValuesExtractors::Vector,
+                 FEValuesExtractors::Tensor<0>,
+                 FEValuesExtractors::Tensor<1>,
+                 FEValuesExtractors::Tensor<2>,
+                 FEValuesExtractors::Tensor<3>,
+                 FEValuesExtractors::Tensor<4>,
+                 FEValuesExtractors::SymmetricTensor<2>,
+                 FEValuesExtractors::SymmetricTensor<4>>;
+
+  /**
+   * Sort the degrees of freedom by vector component. It does the same thing as
+   * above function except the ordering argument is a vector of
+   * FEValuesExtractors. Referencing step-22, it allows the following code
+   * @code{.cpp}
+   * std::vector<unsigned int> block_component(dim + 1, 0);
+   * block_component[dim] = 1;
+   * DoFRenumbering::component_wise(dof_handler, block_component);
+   * @endcode
+   * to be rewritten as
+   * @code{.cpp}
+   * const FEValuesExtractors::Vector velocities(0);
+   * const FEValuesExtractors::Scalar pressure(dim);
+   * DoFRenumbering::component_wise(dof_handler, {velocities, pressure});
+   * @endcode
+   *
+   * Calling the function with {velocities, pressure} is equivalent to calling
+   * the above function with std::vector<unsigned int>{0, 0, 1}, while calling
+   * with {pressure, velocities} would result in a call to above function with
+   * std::vector<unsigned int>{1, 1, 0} as the target_component argument.
+   *
+   */
+  template <int dim, int spacedim>
+  void
+  component_wise(DoFHandler<dim, spacedim>            &dof_handler,
+                 const std::vector<ExtractorVariant> &extractor_order =
+                   std::vector<ExtractorVariant>());
+
 
   /**
    * Compute the renumbering vector needed by the component_wise() functions.
