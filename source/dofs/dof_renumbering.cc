@@ -57,6 +57,10 @@
 
 #undef BOOST_BIND_GLOBAL_PLACEHOLDERS
 
+#include <boost/geometry/algorithms/reverse.hpp>
+#include <boost/geometry/index/rtree.hpp>
+#include <boost/range/algorithm/reverse.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -745,7 +749,101 @@ namespace DoFRenumbering
     dof_handler.renumber_dofs(level, renumbering);
   }
 
+  // Overloaded visitor
+  template<class... Ts>
+  struct overloaded :  Ts... {
+    using Ts::operator()...;
+  };
 
+  // Deduction guide. Not needed from C++20 onwards.
+  template<class... Ts>
+  overloaded(Ts...) -> overloaded<Ts...>;
+
+  // Type trait to detect if a type is any FEValuesExtractors::Tensor<rank>
+  template <typename T>
+  struct is_tensor_extractor : std::false_type {};
+
+  template <int rank>
+  struct is_tensor_extractor<FEValuesExtractors::Tensor<rank>> : std::true_type {};
+
+  // Helper variable template for cleaner syntax, inline and evaluate at compile time
+  template <typename T>
+  inline constexpr bool is_tensor_extractor_v = is_tensor_extractor<T>::value;
+
+  // Extract rank from tensor types
+  template <typename T>
+  struct get_tensor_rank {};
+
+  template <int rank>
+  struct get_tensor_rank<FEValuesExtractors::Tensor<rank>> {
+    static constexpr int value = rank;
+  };
+
+  template <int rank>
+  struct get_tensor_rank<FEValuesExtractors::SymmetricTensor<rank>> {
+    static constexpr int value = rank;
+  };
+
+  // 2. Symmetric tensor
+  template <typename T>
+  struct is_symmetric_tensor_extractor : std::false_type {};
+
+  template <int rank>
+  struct is_symmetric_tensor_extractor<FEValuesExtractors::SymmetricTensor<rank>> : std::true_type {};
+
+  template <typename T>
+  inline constexpr bool is_symmetric_tensor_extractor_v =
+    is_symmetric_tensor_extractor<T>::value;
+
+  // 3. Any tensor (either regular or symmetric)
+  template <typename T>
+  inline constexpr bool is_any_tensor_extractor_v =
+      is_tensor_extractor_v<T> || is_symmetric_tensor_extractor_v<T>;
+
+  // Example usage with the ExtractorVariant
+  template <int dim>
+  void process_extractor(const ExtractorVariant& extractor_variant, const unsigned int block_index, std::vector<unsigned int> &component_order) {
+
+      auto component_order_it = component_order.begin();
+
+      // Visit the variant with an overloaded visitor
+      std::visit(
+        overloaded {
+
+          // Lambda for Scalar extractor
+          [block_index, component_order_it](const FEValuesExtractors::Scalar& scalar) {
+            std::fill_n(component_order_it+scalar.component, 1, block_index);
+          },
+
+          // Lambda for Vector extractor
+          [block_index, component_order_it](const FEValuesExtractors::Vector& vector) {
+            std::fill_n(component_order_it+vector.first_vector_component, dim, block_index);
+          },
+
+          // Lambda for Tensor and SymmetricTensor extractors
+          [block_index, component_order_it](const auto& tensor) {
+            using TensorType = std::decay_t<decltype(tensor)>;
+
+            // Use SFINAE to constrain this handler to tensor types only
+            if constexpr (is_any_tensor_extractor_v<TensorType>) {
+                // Get the rank as a compile-time constant
+                constexpr int rank = get_tensor_rank<TensorType>::value;
+
+                unsigned int n_independent_components = numbers::invalid_unsigned_int;
+                // Determine if it's a regular or symmetric tensor
+                if constexpr (is_tensor_extractor_v<TensorType>) {
+                    n_independent_components = Tensor<rank, dim>::n_independent_components;
+                }
+                else if constexpr (is_symmetric_tensor_extractor_v<TensorType>) {
+                    n_independent_components = SymmetricTensor<rank, dim>::n_independent_components;
+                }
+
+                std::fill_n(component_order_it+tensor.first_tensor_component, n_independent_components, block_index);
+
+              }
+        },
+      }, extractor_variant);
+  }
 
   template <int dim, int spacedim>
   void
@@ -756,80 +854,8 @@ namespace DoFRenumbering
       dof_handler.get_fe().n_components(), numbers::invalid_unsigned_int);
 
     unsigned int block_index = 0;
-    for (const auto &component : extractor_order)
-      {
-        if (std::holds_alternative<FEValuesExtractors::Scalar>(component))
-          std::fill_n(
-            component_order.begin() +
-              std::get<FEValuesExtractors::Scalar>(component).component,
-            1,
-            block_index);
-
-        else if (std::holds_alternative<FEValuesExtractors::Vector>(component))
-          std::fill_n(component_order.begin() +
-                        std::get<FEValuesExtractors::Vector>(component)
-                          .first_vector_component,
-                      dim,
-                      block_index);
-
-        else if (std::holds_alternative<FEValuesExtractors::Tensor<0>>(
-                   component))
-          std::fill_n(component_order.begin() +
-                        std::get<FEValuesExtractors::Tensor<0>>(component)
-                          .first_tensor_component,
-                      Tensor<0, dim>::n_independent_components,
-                      block_index);
-
-        else if (std::holds_alternative<FEValuesExtractors::Tensor<1>>(
-                   component))
-          std::fill_n(component_order.begin() +
-                        std::get<FEValuesExtractors::Tensor<1>>(component)
-                          .first_tensor_component,
-                      Tensor<1, dim>::n_independent_components,
-                      block_index);
-
-        else if (std::holds_alternative<FEValuesExtractors::Tensor<2>>(
-                   component))
-          std::fill_n(component_order.begin() +
-                        std::get<FEValuesExtractors::Tensor<2>>(component)
-                          .first_tensor_component,
-                      Tensor<2, dim>::n_independent_components,
-                      block_index);
-
-        else if (std::holds_alternative<FEValuesExtractors::Tensor<3>>(
-                   component))
-          std::fill_n(component_order.begin() +
-                        std::get<FEValuesExtractors::Tensor<3>>(component)
-                          .first_tensor_component,
-                      Tensor<3, dim>::n_independent_components,
-                      block_index);
-
-        else if (std::holds_alternative<FEValuesExtractors::Tensor<4>>(
-                   component))
-          std::fill_n(component_order.begin() +
-                        std::get<FEValuesExtractors::Tensor<4>>(component)
-                          .first_tensor_component,
-                      Tensor<4, dim>::n_independent_components,
-                      block_index);
-
-        else if (std::holds_alternative<FEValuesExtractors::SymmetricTensor<2>>(
-                   component))
-          std::fill_n(component_order.begin() +
-                        std::get<FEValuesExtractors::SymmetricTensor<2>>(
-                          component)
-                          .first_tensor_component,
-                      SymmetricTensor<2, dim>::n_independent_components,
-                      block_index);
-
-        else if (std::holds_alternative<FEValuesExtractors::SymmetricTensor<4>>(
-                   component))
-          std::fill_n(component_order.begin() +
-                        std::get<FEValuesExtractors::SymmetricTensor<4>>(
-                          component)
-                          .first_tensor_component,
-                      SymmetricTensor<4, dim>::n_independent_components,
-                      block_index);
-
+    for (const auto &component : extractor_order) {
+        process_extractor<dim>(component, block_index, component_order);
         // Increment block index
         block_index++;
       }

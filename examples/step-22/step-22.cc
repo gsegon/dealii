@@ -461,7 +461,10 @@ namespace Step22
 
     std::vector<unsigned int> block_component(dim + 1, 0);
     block_component[dim] = 1;
-    DoFRenumbering::component_wise(dof_handler, block_component);
+    const FEValuesExtractors::Vector velocities(0);
+    const FEValuesExtractors::Scalar pressure(dim);
+    DoFRenumbering::component_wise(dof_handler, {velocities, pressure});
+    // DoFRenumbering::component_wise(dof_handler, block_component);
 
     // @note Instead of manually constructing the <code>block_component</code>
     // We could instead instantiate appropriate FEValuesExtractors and call
