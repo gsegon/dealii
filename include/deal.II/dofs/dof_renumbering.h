@@ -23,7 +23,6 @@
 
 #include <deal.II/dofs/dof_handler.h>
 
-#include <variant>
 #include <vector>
 
 DEAL_II_NAMESPACE_OPEN
@@ -693,29 +692,6 @@ namespace DoFRenumbering
 
 
   /**
-   * Convenience alias for variant type of supported FEValuesExtractors structs
-   */
-  using ExtractorVariant = std::variant<FEValuesExtractors::Scalar,
-                                        FEValuesExtractors::Vector,
-                                        FEValuesExtractors::Tensor<2>,
-                                        FEValuesExtractors::SymmetricTensor<2>>;
-
-
-  /**
-   * Utility function used to fill a given `component_order` vector by
-   * processing an `order` of FEValuesExtractors. Supported extractors are
-   * listed in DoFRenumbering::ExtractorVariant. The function is used in the
-   * implementation of component_wise(DoFHandler<dim, spacedim>&, const
-   * std::vector<ExtractorVariant> &).
-   */
-  template <int dim, int spacedim>
-  void
-  populate_component_order(
-    const std::vector<ExtractorVariant> &order,
-    std::vector<unsigned int>           &component_order,
-    unsigned int unassigned_value = numbers::invalid_unsigned_int);
-
-  /**
    * Sort the degrees of freedom by vector component. It does the same thing as
    * above function except the ordering argument is a braced initializer list
    * containing FEValuesExtractors.
@@ -742,9 +718,9 @@ namespace DoFRenumbering
    */
   template <int dim, int spacedim>
   void
-  component_wise(DoFHandler<dim, spacedim>           &dof_handler,
-                 const std::vector<ExtractorVariant> &order =
-                   std::vector<ExtractorVariant>());
+  component_wise(DoFHandler<dim, spacedim> &dof_handler,
+                 const std::vector<FEValuesExtractors::ExtractorVariant> &
+                   order = std::vector<FEValuesExtractors::ExtractorVariant>());
 
   /**
    * Sort the degrees of freedom by component. It does the same thing as the
@@ -754,10 +730,10 @@ namespace DoFRenumbering
    */
   template <int dim, int spacedim>
   void
-  component_wise(DoFHandler<dim, spacedim>           &dof_handler,
-                 const unsigned int                   level,
-                 const std::vector<ExtractorVariant> &order =
-                   std::vector<ExtractorVariant>());
+  component_wise(DoFHandler<dim, spacedim> &dof_handler,
+                 const unsigned int         level,
+                 const std::vector<FEValuesExtractors::ExtractorVariant> &
+                   order = std::vector<FEValuesExtractors::ExtractorVariant>());
 
 
   /**

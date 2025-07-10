@@ -746,91 +746,101 @@ namespace DoFRenumbering
   }
 
 
-  template <int dim, int spacedim>
-  void
-  populate_component_order(const std::vector<ExtractorVariant> &order,
-                           std::vector<unsigned int>           &component_order,
-                           unsigned int unassigned_value)
+  namespace
   {
-    // Extract the start component index and determine the number of components
-    // for each extractor.
-    unsigned int block_index = 0;
-    for (const auto &extractor : order)
-      {
-        auto start_component_index = numbers::invalid_unsigned_int;
-        auto num_components        = numbers::invalid_unsigned_int;
+    // Utility function used to fill a given `component_order` vector by
+    // processing an `order` of FEValuesExtractors. Supported extractors are
+    // listed in FEValueExtractors::ExtractorVariant. The function is used in
+    // the implementation of component_wise(DoFHandler<dim, spacedim>&, const
+    // std::vector<FEValueExtractors::ExtractorVariant> &).
+    template <int dim, int spacedim>
+    void
+    populate_component_order(
+      const std::vector<FEValuesExtractors::ExtractorVariant> &order,
+      std::vector<unsigned int>                               &component_order,
+      unsigned int unassigned_value = numbers::invalid_unsigned_int)
+    {
+      // Extract the start component index and determine the number of
+      // components for each extractor.
+      unsigned int block_index = 0;
+      for (const auto &extractor : order)
+        {
+          auto start_component_index = numbers::invalid_unsigned_int;
+          auto num_components        = numbers::invalid_unsigned_int;
 
-        if (std::holds_alternative<FEValuesExtractors::Scalar>(extractor))
-          {
-            start_component_index =
-              std::get<FEValuesExtractors::Scalar>(extractor).component;
-            num_components = 1;
-          }
+          if (std::holds_alternative<FEValuesExtractors::Scalar>(extractor))
+            {
+              start_component_index =
+                std::get<FEValuesExtractors::Scalar>(extractor).component;
+              num_components = 1;
+            }
 
-        else if (std::holds_alternative<FEValuesExtractors::Vector>(extractor))
-          {
-            start_component_index =
-              std::get<FEValuesExtractors::Vector>(extractor)
-                .first_vector_component;
-            num_components = FEValuesViews::Vector<dim, spacedim>::value_type::
-              n_independent_components;
-          }
+          else if (std::holds_alternative<FEValuesExtractors::Vector>(
+                     extractor))
+            {
+              start_component_index =
+                std::get<FEValuesExtractors::Vector>(extractor)
+                  .first_vector_component;
+              num_components = FEValuesViews::Vector<dim, spacedim>::
+                value_type::n_independent_components;
+            }
 
-        else if (std::holds_alternative<FEValuesExtractors::Tensor<2>>(
-                   extractor))
-          {
-            start_component_index =
-              std::get<FEValuesExtractors::Tensor<2>>(extractor)
-                .first_tensor_component;
-            num_components = FEValuesViews::Tensor<2, dim, spacedim>::
-              value_type::n_independent_components;
-          }
+          else if (std::holds_alternative<FEValuesExtractors::Tensor<2>>(
+                     extractor))
+            {
+              start_component_index =
+                std::get<FEValuesExtractors::Tensor<2>>(extractor)
+                  .first_tensor_component;
+              num_components = FEValuesViews::Tensor<2, dim, spacedim>::
+                value_type::n_independent_components;
+            }
 
-        else if (std::holds_alternative<FEValuesExtractors::SymmetricTensor<2>>(
-                   extractor))
-          {
-            start_component_index =
-              std::get<FEValuesExtractors::SymmetricTensor<2>>(extractor)
-                .first_tensor_component;
-            num_components = FEValuesViews::SymmetricTensor<2, dim, spacedim>::
-              value_type::n_independent_components;
-          }
+          else if (std::holds_alternative<
+                     FEValuesExtractors::SymmetricTensor<2>>(extractor))
+            {
+              start_component_index =
+                std::get<FEValuesExtractors::SymmetricTensor<2>>(extractor)
+                  .first_tensor_component;
+              num_components =
+                FEValuesViews::SymmetricTensor<2, dim, spacedim>::value_type::
+                  n_independent_components;
+            }
 
-        else
-          {
-            throw ExcNotImplemented(
-              "An unsupported ExtractorVariant was passed in the component_wise extractor_order argument.");
-          }
+          else
+            {
+              throw ExcNotImplemented(
+                "An unsupported ExtractorVariant was passed in the component_wise extractor_order argument.");
+            }
 
-        // Fill `component_order` vector with `num_components` starting at
-        // `start_component_index`. Set the values to `block_index`.
-        std::transform(
-          component_order.begin() + start_component_index,
-          component_order.begin() + start_component_index + num_components,
-          component_order.begin() + start_component_index,
-          [block_index, unassigned_value](auto current_value) {
-            Assert(
-              current_value == unassigned_value,
-              ExcMessage(
-                "A component which has already been assigned a block "
-                "index is trying to be overwritten. This indicates that the "
-                "component_wise function is being called with an invalid set "
-                "of extractors in the extractor_order argument "
-                "that overlap in component indices."));
+          // Fill `component_order` vector with `num_components` starting at
+          // `start_component_index`. Set the values to `block_index`.
+          std::transform(
+            component_order.begin() + start_component_index,
+            component_order.begin() + start_component_index + num_components,
+            component_order.begin() + start_component_index,
+            [block_index, unassigned_value](auto current_value) {
+              Assert(
+                current_value == unassigned_value,
+                ExcMessage(
+                  "A component which has already been assigned a block "
+                  "index is trying to be overwritten. This indicates that the "
+                  "component_wise function is being called with an invalid set "
+                  "of extractors in the extractor_order argument "
+                  "that overlap in component indices."));
 
-            return block_index; // Insert block index
-          });
+              return block_index; // Insert block index
+            });
 
-        // Increment block index
-        block_index++;
-      }
-  }
-
+          // Increment block index
+          block_index++;
+        }
+    }
+  } // namespace
 
   template <int dim, int spacedim>
   void
-  component_wise(DoFHandler<dim, spacedim>           &dof_handler,
-                 const std::vector<ExtractorVariant> &order)
+  component_wise(DoFHandler<dim, spacedim> &dof_handler,
+                 const std::vector<FEValuesExtractors::ExtractorVariant> &order)
   {
     // The function acts as a wrapper around the above implemented function.
 
@@ -868,9 +878,9 @@ namespace DoFRenumbering
 
   template <int dim, int spacedim>
   void
-  component_wise(DoFHandler<dim, spacedim>           &dof_handler,
-                 const unsigned int                   level,
-                 const std::vector<ExtractorVariant> &order)
+  component_wise(DoFHandler<dim, spacedim> &dof_handler,
+                 const unsigned int         level,
+                 const std::vector<FEValuesExtractors::ExtractorVariant> &order)
   {
     // `component_order` argument is constructed from given ExtractorVariant
     // vector and the wrapped function is called at the end.
