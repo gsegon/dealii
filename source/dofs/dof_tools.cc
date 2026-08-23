@@ -26,6 +26,7 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
 
+#include "deal.II/fe/fe_values_extractors_utils.h"
 #include <deal.II/fe/fe.h>
 #include <deal.II/fe/fe_tools.h>
 #include <deal.II/fe/fe_values.h>
@@ -2447,6 +2448,20 @@ namespace DoFTools
       }
 
     return dofs_per_block;
+  }
+
+
+  template <int dim, int spacedim>
+  std::vector<types::global_dof_index>
+  count_dofs_per_fe_block(
+    const DoFHandler<dim, spacedim>                     &dof_handler,
+    const std::vector<FEValuesExtractors::AnyExtractor> &order)
+  {
+    std::vector<unsigned int> component_order =
+      FEValuesExtractors::utils::internal::generate_component_order<dim,
+                                                                    spacedim>(
+        order, dof_handler.get_fe().n_components());
+    return count_dofs_per_fe_block(dof_handler, component_order);
   }
 
 

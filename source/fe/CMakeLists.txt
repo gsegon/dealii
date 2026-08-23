@@ -71,6 +71,7 @@ set(_separate_src
   fe_values_base.cc
   fe_values_views.cc
   fe_values_views_internal.cc
+  fe_values_extractors_utils.cc
   mapping_fe_field_inst1.cc
   mapping_fe_field_inst2.cc
   fe_tools.cc
@@ -131,6 +132,7 @@ set(_inst
   fe_values_base.inst.in
   fe_values_views.inst.in
   fe_values_views_internal.inst.in
+  fe_values_extractors_utils.inst.in
   fe_values.inst.in
   fe_wedge_p.inst.in
   mapping_c1.inst.in
