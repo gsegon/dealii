@@ -17,8 +17,6 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
 
     namespace FEValuesExtractors
     \{
-      namespace utils
-      \{
         namespace internal
         \{
 
@@ -28,7 +26,6 @@ for (deal_II_dimension : DIMENSIONS; deal_II_space_dimension : SPACE_DIMENSIONS)
             const unsigned int);
 
         \}
-      \}
     \}
 
 #endif

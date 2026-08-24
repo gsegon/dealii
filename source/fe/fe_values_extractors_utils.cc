@@ -10,7 +10,6 @@
 //
 // -----------------------------------------------------------------------------
 
-#include <deal.II/fe/fe_values_extractors_utils.h>
 #include <deal.II/fe/fe_values_views.h>
 
 
@@ -18,12 +17,11 @@ DEAL_II_NAMESPACE_OPEN
 
 namespace FEValuesExtractors
 {
-  namespace utils
+  namespace internal
   {
-    namespace internal
-    {
+
       template <int dim, int spacedim>
-      std::vector<unsigned int>
+       std::vector<unsigned int>
       generate_component_order(
         const std::vector<FEValuesExtractors::AnyExtractor> &extractors,
         const unsigned int                                   fe_n_components)
@@ -108,9 +106,8 @@ namespace FEValuesExtractors
           }
         return component_order;
       }
-    } // namespace internal
 
-  } // namespace utils
+  } // namespace annony
 
 } // namespace FEValuesExtractors
 

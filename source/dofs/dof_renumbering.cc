@@ -24,7 +24,6 @@
 
 #include <deal.II/fe/fe.h>
 #include <deal.II/fe/fe_q_base.h>
-#include <deal.II/fe/fe_values_extractors_utils.h>
 #include <deal.II/fe/mapping_q1.h>
 
 #include <deal.II/grid/tria.h>
@@ -64,6 +63,31 @@
 
 
 DEAL_II_NAMESPACE_OPEN
+
+namespace FEValuesExtractors
+{
+  /**
+   * Namespace for utility functions related to FEValuesExtractors.
+   */
+  namespace internal
+  {
+
+      /**
+       * @internal
+       * Utility function used to construct a `component_order` vector by
+       * processing a vector of FEValuesExtractors in given order. Supported
+       * extractors are listed in FEValueExtractors::AnyExtractor.
+       */
+      template <int dim, int spacedim>
+      std::vector<unsigned int>
+      generate_component_order(
+        const std::vector<FEValuesExtractors::AnyExtractor> &extractors,
+        const unsigned int                                   fe_n_components);
+
+
+  } // namespace
+
+} // namespace FEValuesExtractors
 
 namespace DoFRenumbering
 {
@@ -761,7 +785,7 @@ namespace DoFRenumbering
 
     // Generate component order argument from extractors.
     std::vector<unsigned int> component_order =
-      FEValuesExtractors::utils::internal::generate_component_order<dim,
+      FEValuesExtractors::internal::generate_component_order<dim,
                                                                     spacedim>(
         order, dof_handler.get_fe().n_components());
 
@@ -800,7 +824,7 @@ namespace DoFRenumbering
 
     // Generate component order argument from extractors.
     std::vector<unsigned int> component_order =
-      FEValuesExtractors::utils::internal::generate_component_order<dim,
+      FEValuesExtractors::internal::generate_component_order<dim,
                                                                     spacedim>(
         order, dof_handler.get_fe().n_components());
 
